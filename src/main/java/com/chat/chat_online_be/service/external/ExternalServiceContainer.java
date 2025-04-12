@@ -16,4 +16,5 @@ public class ExternalServiceContainer {
     MessageSourceService messageSourceService;
     PasswordEncoder passwordEncoder;
     JwtTokenProvider jwtTokenProvider;
+    RedisService redisService;
 }
