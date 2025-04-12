@@ -1,0 +1,58 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<configuration scan="true" scanPeriod="30 seconds">
+  <!-- Base log directory and date format -->
+  <property name="LOG_HOME" value="logs" />
+  <property name="LOG_DATE" value="%d{yyyy-MM-dd}" />
+  <!-- Log pattern format -->
+  <property name="LOG_PATTERN" value="%d{HH:mm:ss.SSS} [%thread] %-5level %logger{36} - %msg%n" />
+
+  <!-- INFO appender -->
+  <appender name="INFO_FILE" class="ch.qos.logback.core.rolling.RollingFileAppender">
+    <!-- File name used while writing (will be renamed based on time pattern) -->
+    <file>${LOG_HOME}/info/current.log</file>
+    <encoder>
+      <pattern>${LOG_PATTERN}</pattern>
+      <charset>UTF-8</charset>
+    </encoder>
+    <rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
+      <!-- Here is the correct pattern for daily rotation -->
+      <fileNamePattern>${LOG_HOME}/info/%d{yyyy-MM-dd}.log</fileNamePattern>
+      <maxHistory>30</maxHistory>
+    </rollingPolicy>
+    <filter class="ch.qos.logback.classic.filter.LevelFilter">
+      <level>INFO</level>
+      <onMatch>ACCEPT</onMatch>
+      <onMismatch>DENY</onMismatch>
+    </filter>
+  </appender>
+
+  <!-- ERROR appender -->
+  <appender name="ERROR_FILE" class="ch.qos.logback.core.rolling.RollingFileAppender">
+    <file>${LOG_HOME}/error/current.log</file>
+    <encoder>
+      <pattern>${LOG_PATTERN}</pattern>
+      <charset>UTF-8</charset>
+    </encoder>
+    <rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
+      <fileNamePattern>${LOG_HOME}/error/%d{yyyy-MM-dd}.log</fileNamePattern>
+      <maxHistory>30</maxHistory>
+    </rollingPolicy>
+    <filter class="ch.qos.logback.classic.filter.ThresholdFilter">
+      <level>WARN</level>
+    </filter>
+  </appender>
+
+  <!-- Console output (optional) -->
+  <appender name="STDOUT" class="ch.qos.logback.core.ConsoleAppender">
+    <encoder>
+      <pattern>${LOG_PATTERN}</pattern>
+    </encoder>
+  </appender>
+
+  <!-- Root logger configuration -->
+  <root level="INFO">
+    <appender-ref ref="STDOUT"/>
+    <appender-ref ref="INFO_FILE"/>
+    <appender-ref ref="ERROR_FILE"/>
+  </root>
+</configuration>
