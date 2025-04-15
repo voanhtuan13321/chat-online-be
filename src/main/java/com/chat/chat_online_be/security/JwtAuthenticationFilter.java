@@ -1,10 +1,10 @@
 package com.chat.chat_online_be.security;
 
-import com.chat.chat_online_be.constant.ClassNameConstants;
+import com.chat.chat_online_be.constant.ClassNamesConstant;
 import com.chat.chat_online_be.entity.UserEntity;
 import com.chat.chat_online_be.exception.JwtTokenNotFoundException;
 import com.chat.chat_online_be.model.response.ApiResponse;
-import com.chat.chat_online_be.service.external.ExternalServiceContainer;
+import com.chat.chat_online_be.service.external.MessageSourceService;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.jsonwebtoken.ExpiredJwtException;
 import jakarta.servlet.FilterChain;
@@ -20,6 +20,7 @@ import org.springframework.http.MediaType;
 import org.springframework.lang.NonNull;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.web.authentication.WebAuthenticationDetailsSource;
 import org.springframework.stereotype.Component;
@@ -39,19 +40,18 @@ import java.nio.charset.StandardCharsets;
 public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
     UserDetailsService userDetailsService;
-    ExternalServiceContainer externalService;
+    JwtTokenProvider externalService;
+    MessageSourceService messageSourceService;
 
     /**
      * Examines the request for the presence of a JWT token and validates it
      * using the configured {@link JwtTokenProvider}. If the token is valid, the
      * user associated with the token is loaded from the configured
-     * {@link UserDetailsService} and the user is set in the
-     * {@link SecurityContextHolder}.
+     * {@link UserDetailsService} and the user is set in the {@link SecurityContextHolder}.
      *
      * @param request     the request to examine
      * @param response    the response to which the filter chain is writing
-     * @param filterChain the filter chain to which the request and response are
-     *                    passed
+     * @param filterChain the filter chain to which the request and response are passed
      * @throws ServletException if an error occurs while processing the request
      * @throws IOException      if an error occurs while writing the response
      */
@@ -61,20 +61,20 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                                     @NonNull FilterChain filterChain) throws ServletException, IOException {
         try {
             // Get the JWT token from the request
-            var jwt = getJwtFromRequest(request);
+            String jwt = getJwtFromRequest(request);
 
             // Extract the email from the JWT token
-            var email = externalService.getJwtTokenProvider().getSubjectFromJWT(jwt);
+            String email = externalService.getSubjectFromJWT(jwt);
 
             // Check if the user is already authenticated
             if (StringUtils.hasText(email) && (SecurityContextHolder.getContext().getAuthentication() == null)) {
                 // Load the user details from the user service
-                var userDetails = userDetailsService.loadUserByUsername(email);
+                UserDetails userDetails = userDetailsService.loadUserByUsername(email);
 
-                if (externalService.getJwtTokenProvider().isTokenValid(jwt, (UserEntity) userDetails)) {
+                if (externalService.isTokenValid(jwt, (UserEntity) userDetails)) {
                     // Create an authentication object based on the user details,
                     // and add request details to the authentication object
-                    var authToken = new UsernamePasswordAuthenticationToken(userDetails, null, userDetails.getAuthorities());
+                    UsernamePasswordAuthenticationToken authToken = new UsernamePasswordAuthenticationToken(userDetails, null, userDetails.getAuthorities());
                     authToken.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
 
                     // Set the authentication object in the security context
@@ -112,8 +112,8 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
      */
     private String getJwtFromRequest(HttpServletRequest request) throws JwtTokenNotFoundException {
         // Get the Authorization header from the request
-        var bearerToken = request.getHeader(HttpHeaders.AUTHORIZATION);
-        var BEARER_PREFIX = "Bearer ";
+        String bearerToken = request.getHeader(HttpHeaders.AUTHORIZATION);
+        String BEARER_PREFIX = "Bearer ";
 
         // Check if the header is present and starts with the Bearer prefix
         if (StringUtils.hasText(bearerToken) && bearerToken.startsWith(BEARER_PREFIX)) {
@@ -135,16 +135,16 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
      */
     private String getErrorMessage(Exception ex) {
         return switch (ex.getClass().getSimpleName()) {
-            case ClassNameConstants.ExpiredJwtException
-                    -> externalService.getMessageSourceService().getMessage("Error.Unauthorized.TokenHasExpired");
-            case ClassNameConstants.UnsupportedJwtException
-                    -> externalService.getMessageSourceService().getMessage("Error.Unauthorized.UnsupportedJWTToken");
-            case ClassNameConstants.MalformedJwtException
-                    -> externalService.getMessageSourceService().getMessage("Error.Unauthorized.MalformedJWTToken");
-            case ClassNameConstants.IllegalArgumentException
-                    -> externalService.getMessageSourceService().getMessage("Error.Unauthorized.JWTTokenIsMissingOrInvalid");
+            case ClassNamesConstant.EXPIRED_JWT_EXCEPTION
+                    -> messageSourceService.getMessage("Error.Unauthorized.TokenHasExpired");
+            case ClassNamesConstant.UNSUPPORTED_JWT_EXCEPTION
+                    -> messageSourceService.getMessage("Error.Unauthorized.UnsupportedJWTToken");
+            case ClassNamesConstant.MALFORMED_JWT_EXCEPTION
+                    -> messageSourceService.getMessage("Error.Unauthorized.MalformedJWTToken");
+            case ClassNamesConstant.ILLEGAL_ARGUMENT_EXCEPTION
+                    -> messageSourceService.getMessage("Error.Unauthorized.JWTTokenIsMissingOrInvalid");
             default
-                    -> externalService.getMessageSourceService().getMessage("Error.InternalServerError.Default"); // For other unknown exceptions
+                    -> messageSourceService.getMessage("Error.InternalServerError.Default"); // For other unknown exceptions
         };
     }
 

@@ -15,6 +15,7 @@ import org.springframework.stereotype.Component;
 import java.security.Key;
 import java.util.Date;
 import java.util.Map;
+import java.util.UUID;
 import java.util.function.Function;
 
 /**
@@ -34,45 +35,48 @@ public class JwtTokenProvider {
     String _jwtSecret;
 
     /**
-     * Generates a JWT token for the given user details without additional claims.
-     * This method provides a simplified way to generate a token by calling
-     * the overloaded method with empty additional claims.
+     * Generates a JWT token for the given user.
+     * The token includes a standard JWT header and claims generated from the user entity.
      *
-     * @param userEntity The user details for which the token needs to be generated.
-     * @return The generated JWT token.
+     * @param userEntity The user for whom the token is generated.
+     * @return The generated JWT token as a String.
      */
     public String generateToken(UserEntity userEntity) {
-        Map<String, Object> extraClaims = Map.of(
-                "user_id", userEntity.getId(),
-                "authorities", userEntity.getAuthorities().stream().map(GrantedAuthority::getAuthority).toList()
-        );
+        // Create a standard JWT header with type "JWT"
+        Map<String, Object> headers = Map.of("typ", "JWT");
 
-        // Call the overloaded generateToken method with an empty map for extra claims
-        return generateToken(extraClaims, userEntity.getEmail());
+        // Generate claims (payload) for the user
+        Claims claims = genarateClaims(userEntity);
+
+        // Build and sign the JWT token using HS256 algorithm
+        return Jwts.builder()
+                .setHeaderParams(headers) // Set custom header parameters
+                .setClaims(claims) // Set the token payload (claims)
+                .signWith(getSigningKey(), SignatureAlgorithm.HS256) // Sign the token with the secret key and algorithm
+                .compact(); // Build and serialize the JWT token to a compact, URL-safe string
     }
 
     /**
-     * Generates a JWT token with the specified extra claims and subject.
-     * This method sets the claims, subject, issue date, and expiration date
-     * for the token and signs it using the HMAC SHA256 algorithm.
-     *
-     * @param extraClaims A map of additional claims to be included in the token.
-     * @param subject     The subject for the token, typically the username.
-     * @return The generated JWT token as a string.
+     * Generate a JWT Claims object for the given user.
+     * @param userEntity the user for whom to generate claims
+     * @return Claims containing both standard and custom fields
      */
-    public String generateToken(Map<String, Object> extraClaims, String subject) {
-        Map<String, Object> headers = Map.of(
-            "typ", "JWT"
-        );
-        // Set the claims for the JWT token
-        return Jwts.builder()
-                .setHeaderParams(headers)
-                .setClaims(extraClaims) // Add additional claims to the token
-                .setSubject(subject) // Set the subject as the user's username
-                .setIssuedAt(new Date(System.currentTimeMillis())) // Set the issue date to the current time
-                .setExpiration(new Date(System.currentTimeMillis() + 1000 * 60 * 5)) // Set the expiration time to 5 hours from now
-                .signWith(getSigningKey(), SignatureAlgorithm.HS256) // Sign the token with the signing key and HMAC SHA256 algorithm
-                .compact(); // Build the JWT token
+    private Claims genarateClaims(UserEntity userEntity) {
+        long now = System.currentTimeMillis();
+        Claims claims = Jwts.claims();
+
+        claims.setSubject(userEntity.getEmail()); // Standard claim: user's email as the subject (main identifier)
+        claims.setIssuedAt(new Date(now)); // Standard claim: token issued at current time
+        claims.setExpiration(new Date(now + 1000 * 60 * 5)); // Standard claim: token expiration time (5 minutes from now)
+        claims.setId(UUID.randomUUID().toString()); // Standard claim: unique JWT ID
+        claims.setIssuer("chat_online_be"); // Standard claim: issuer of the token (your backend system)
+        claims.setAudience("chat_online_fe"); // Standard claim: intended audience (e.g., frontend client)
+        claims.setNotBefore(new Date(now)); // Standard claim: token is not valid before this time
+        claims.put("user_id", userEntity.getId()); // Custom claim: user's unique ID
+        claims.put("user_name", userEntity.getUsername()); // Custom claim: user's username
+        claims.put("authorities", userEntity.getAuthorities().stream().map(GrantedAuthority::getAuthority).toList()); // Custom claim: user's authorities/roles
+
+        return claims;
     }
 
     /**
@@ -85,7 +89,6 @@ public class JwtTokenProvider {
     private Key getSigningKey() {
         return Keys.hmacShaKeyFor(Decoders.BASE64.decode(_jwtSecret));
     }
-
 
     /**
      * Given a JWT token, returns the username contained within it.
@@ -103,15 +106,14 @@ public class JwtTokenProvider {
      * with the username from the user details. It also checks if the token
      * is expired.
      *
-     * @param token       The JWT token to be validated.
+     * @param token      The JWT token to be validated.
      * @param userEntity The user details for which the token needs to be validated.
      * @return True if the token is valid for the given user details, false otherwise.
      */
     public boolean isTokenValid(String token, UserEntity userEntity) {
-        var email = getSubjectFromJWT(token);
+        String email = getSubjectFromJWT(token);
         return (email.equals(userEntity.getEmail()) && !isTokenExpired(token));
     }
-
 
     /**
      * Checks if the given JWT token is expired.
@@ -144,12 +146,12 @@ public class JwtTokenProvider {
      * from the Claims object. It then calls the resolver with the Claims object
      * and returns the result.
      *
-     * @param token The JWT token from which the claim needs to be extracted.
+     * @param token          The JWT token from which the claim needs to be extracted.
      * @param claimsResolver The function to extract the claim from the Claims object.
      * @return The extracted claim.
      */
     public <T> T extractClaim(String token, Function<Claims, T> claimsResolver) {
-        final var claims = extractAllClaims(token);
+        Claims claims = extractAllClaims(token);
         return claimsResolver.apply(claims);
     }
 

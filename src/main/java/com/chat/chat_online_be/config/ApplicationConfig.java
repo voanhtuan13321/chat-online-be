@@ -1,6 +1,6 @@
 package com.chat.chat_online_be.config;
 
-import com.chat.chat_online_be.repository.RepositoryContainer;
+import com.chat.chat_online_be.repository.IUserRepository;
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
@@ -22,7 +22,8 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 @SuppressWarnings("unused")
 public class ApplicationConfig {
 
-    RepositoryContainer repository;
+    // Inject repositories
+    IUserRepository userRepository;
 
     /**
      * Configures the {@link ApplicationConfig} class with necessary beans
@@ -34,7 +35,7 @@ public class ApplicationConfig {
      */
     @Bean
     public AuthenticationProvider authenticationProvider() {
-        var authProvider = new DaoAuthenticationProvider();
+        DaoAuthenticationProvider authProvider = new DaoAuthenticationProvider();
         authProvider.setUserDetailsService(userDetailsService());
         authProvider.setPasswordEncoder(passwordEncoder());
         return authProvider;
@@ -50,9 +51,7 @@ public class ApplicationConfig {
      */
     @Bean
     public UserDetailsService userDetailsService() {
-        return email -> repository
-                .getUserRepository()
-                .findByEmail(email)
+        return email -> userRepository.findByEmail(email)
                 .orElseThrow(() -> new UsernameNotFoundException(String.format("email %s not found", email)));
     }
 

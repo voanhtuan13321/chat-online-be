@@ -6,7 +6,6 @@ import lombok.experimental.FieldDefaults;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
 
-import java.io.Serializable;
 import java.util.Collection;
 import java.util.List;
 
@@ -21,7 +20,7 @@ import java.util.List;
 @AllArgsConstructor
 @FieldDefaults(level = AccessLevel.PRIVATE)
 @Builder
-public class UserEntity extends AuditableEntity implements UserDetails, Serializable {
+public class UserEntity extends AuditableEntity implements UserDetails {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     Long id;
@@ -51,7 +50,6 @@ public class UserEntity extends AuditableEntity implements UserDetails, Serializ
         return authorities;
     }
 
-
     /**
      * Returns the username used to authenticate the user.
      * <p>
@@ -64,7 +62,6 @@ public class UserEntity extends AuditableEntity implements UserDetails, Serializ
     public String getUsername() {
         return username;
     }
-
 
     /**
      * Returns the password used to authenticate the user.
@@ -87,13 +84,12 @@ public class UserEntity extends AuditableEntity implements UserDetails, Serializ
      * is never expired.
      *
      * @return {@code true} if the user's account is valid (ie non-expired),
-     * {@code false} if it has expired
+     *         {@code false} if it has expired
      */
     @Override
     public boolean isAccountNonExpired() {
         return true;
     }
-
 
     /**
      * Indicates whether the user is locked or unlocked.
@@ -110,7 +106,6 @@ public class UserEntity extends AuditableEntity implements UserDetails, Serializ
         return true;
     }
 
-
     /**
      * Indicates whether the user's credentials have expired.
      * <p>
@@ -120,7 +115,7 @@ public class UserEntity extends AuditableEntity implements UserDetails, Serializ
      * never expire.
      *
      * @return {@code true} if the user's credentials are valid (ie non-expired),
-     * {@code false} if they have expired
+     *         {@code false} if they have expired
      */
     @Override
     public boolean isCredentialsNonExpired() {
