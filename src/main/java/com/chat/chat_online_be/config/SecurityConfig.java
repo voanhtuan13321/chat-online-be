@@ -32,6 +32,7 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
 @SuppressWarnings("unused")
 public class SecurityConfig {
 
+    // Inject dependencies
     JwtAuthenticationFilter jwtAuthenticationFilter;
     AuthenticationProvider authenticationProvider;
 
@@ -49,7 +50,7 @@ public class SecurityConfig {
      */
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
-        var publicUrls = new String[]{
+        String[] publicUrls = {
                 "/api/v1/auth/**",
                 "/css/style.css",
                 "/favicon.ico",

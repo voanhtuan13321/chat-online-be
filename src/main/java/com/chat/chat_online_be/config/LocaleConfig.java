@@ -27,7 +27,7 @@ public class LocaleConfig {
      */
     @Bean
     public MessageSource messageSource() {
-        var messageSource = new ReloadableResourceBundleMessageSource();
+        ReloadableResourceBundleMessageSource messageSource = new ReloadableResourceBundleMessageSource();
         messageSource.setBasename("classpath:i18n/messages");
         messageSource.setDefaultEncoding("UTF-8");
         return messageSource;
@@ -42,7 +42,7 @@ public class LocaleConfig {
      */
     @Bean
     public LocaleResolver localeResolver() {
-        var localeResolver = new AcceptHeaderLocaleResolver();
+        AcceptHeaderLocaleResolver localeResolver = new AcceptHeaderLocaleResolver();
         localeResolver.setDefaultLocale(Locale.US);
         return localeResolver;
     }

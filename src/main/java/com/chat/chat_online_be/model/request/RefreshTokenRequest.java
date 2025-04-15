@@ -6,10 +6,6 @@ import jakarta.validation.constraints.NotBlank;
 import lombok.*;
 import lombok.experimental.FieldDefaults;
 
-/**
- * Represents a request containing authentication credentials.
- * This includes the username and password fields.
- */
 @Getter
 @Setter
 @Builder
@@ -17,9 +13,8 @@ import lombok.experimental.FieldDefaults;
 @AllArgsConstructor
 @FieldDefaults(level = AccessLevel.PRIVATE)
 @JsonNaming(PropertyNamingStrategies.SnakeCaseStrategy.class)
-public class AuthenticationRequest {
+public class RefreshTokenRequest {
     @NotBlank
-    String email;
-    @NotBlank
-    String password;
+    String refreshToken;
+    String deviceInfo;
 }

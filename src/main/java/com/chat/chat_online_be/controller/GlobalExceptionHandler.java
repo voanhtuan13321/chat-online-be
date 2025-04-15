@@ -1,10 +1,11 @@
 package com.chat.chat_online_be.controller;
 
-import com.chat.chat_online_be.constant.ClassNameConstants;
+import com.chat.chat_online_be.constant.ClassNamesConstant;
 import com.chat.chat_online_be.exception.BadRequestException;
+import com.chat.chat_online_be.exception.RefreshTokenException;
 import com.chat.chat_online_be.model.response.ApiResponse;
 import com.chat.chat_online_be.model.response.ResponseEntityUtils;
-import com.chat.chat_online_be.service.external.ExternalServiceContainer;
+import com.chat.chat_online_be.service.external.MessageSourceService;
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
@@ -20,6 +21,7 @@ import org.springframework.web.bind.annotation.ControllerAdvice;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.context.request.WebRequest;
 
+import java.util.Map;
 import java.util.Optional;
 import java.util.stream.Collectors;
 
@@ -30,10 +32,12 @@ import java.util.stream.Collectors;
 @SuppressWarnings("unused")
 public class GlobalExceptionHandler {
 
-    ExternalServiceContainer externalService;
+    // Inject dependencies
+    MessageSourceService messageSourceService;
 
     /**
-     * Handles authentication exceptions such as BadCredentialsException, UsernameNotFoundException, and AuthenticationException.
+     * Handles authentication exceptions such as BadCredentialsException,
+     * UsernameNotFoundException, and AuthenticationException.
      *
      * @param ex      the caught exception
      * @param request the HTTP request information
@@ -43,12 +47,12 @@ public class GlobalExceptionHandler {
     public ResponseEntity<ApiResponse<?>> handleAuthenticationExceptions(Exception ex, WebRequest request) {
         log.error("Authentication error: {}", ex.getMessage(), ex);
 
-        var message = switch (ex.getClass().getSimpleName()) {
-            case ClassNameConstants.UsernameNotFoundException
-                    -> externalService.getMessageSourceService().getMessage("Error.Unauthorized.UsernameNotFound");
-            case ClassNameConstants.AuthenticationException
-                    -> externalService.getMessageSourceService().getMessage("Error.Unauthorized.UnauthorizedAccess");
-            default -> externalService.getMessageSourceService().getMessage("Error.Unauthorized.Default");
+        String message = switch (ex.getClass().getSimpleName()) {
+            case ClassNamesConstant.USERNAME_NOT_FOUND_EXCEPTION
+                    -> messageSourceService.getMessage("Error.Unauthorized.UsernameNotFound");
+            case ClassNamesConstant.AUTHENTICATION_EXCEPTION
+                    -> messageSourceService.getMessage("Error.Unauthorized.UnauthorizedAccess");
+            default -> messageSourceService.getMessage("Error.Unauthorized.Default");
         };
 
         return ResponseEntityUtils.unauthorized(ex, message);
@@ -64,7 +68,7 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(AccessDeniedException.class)
     public ResponseEntity<ApiResponse<?>> handleAccessDeniedException(AccessDeniedException ex, WebRequest request) {
         log.error(ex.getMessage(), ex);
-        return ResponseEntityUtils.forbidden(ex, externalService.getMessageSourceService().getMessage("Error.Forbidden.Default"));
+        return ResponseEntityUtils.forbidden(ex, messageSourceService.getMessage("Error.Forbidden.Default"));
     }
 
     /**
@@ -76,7 +80,21 @@ public class GlobalExceptionHandler {
      */
     @ExceptionHandler(BadRequestException.class)
     public ResponseEntity<ApiResponse<?>> handleBadRequestException(BadRequestException ex, WebRequest request) {
-        return ResponseEntityUtils.badRequest(ex.getErrorMap(), externalService.getMessageSourceService().getMessage("Error.BadRequest.Default"));
+        return ResponseEntityUtils.badRequest(ex.getErrorMap(), messageSourceService.getMessage("Error.BadRequest.Default"));
+    }
+
+    /**
+     * Handles refresh token exceptions.
+     *
+     * @param ex      the caught exception
+     * @param request the HTTP request information
+     * @return ResponseEntity<ApiResponse<?>> containing the forbidden error response
+     */
+    @ExceptionHandler(RefreshTokenException.class)
+    public ResponseEntity<ApiResponse<?>> handleRefreshTokenException(RefreshTokenException ex, WebRequest request) {
+        log.error("Refresh token error: {}", ex.getMessage(), ex);
+        Map<String, String> errorMap = Map.of("refresh_token", ex.getMessage());
+        return ResponseEntityUtils.forbidden(ex, "Lỗi khi làm mới token");
     }
 
     /**
@@ -89,26 +107,27 @@ public class GlobalExceptionHandler {
      */
     @ExceptionHandler(MethodArgumentNotValidException.class)
     public ResponseEntity<ApiResponse<?>> handleMethodArgumentNotValidException(MethodArgumentNotValidException ex, WebRequest request) {
-        var errorMap = ex.getBindingResult()
+        Map<String, String> errorMap = ex.getBindingResult()
                 .getFieldErrors()
                 .stream()
                 .collect(Collectors.toMap(
                         FieldError::getField,
-                        error -> Optional.ofNullable(error.getDefaultMessage()).orElse("")
-                ));
+                        error -> Optional.ofNullable(error.getDefaultMessage()).orElse("")));
 
-        return ResponseEntityUtils.badRequest(errorMap, externalService.getMessageSourceService().getMessage("Error.BadRequest.Default"));
+        return ResponseEntityUtils.badRequest(errorMap, messageSourceService.getMessage("Error.BadRequest.Default"));
     }
 
-//    @ExceptionHandler(HttpException.class)
-//    public ResponseEntity<ApiErrorResponse> handleHttpException(HttpException ex, WebRequest request) {
-//        log.error(ex.getMessage(), ex);
-//
-//        var errorMap = Map.of(
-//                "error", ex.getMessage()
-//        );
-//        return ResponseApiEntity.badRequest(errorMap, externalService.getMessageSource().getMessage("Error.BadRequest.Default"));
-//    }
+    // @ExceptionHandler(HttpException.class)
+    // public ResponseEntity<ApiErrorResponse> handleHttpException(HttpException ex,
+    // WebRequest request) {
+    // log.error(ex.getMessage(), ex);
+    //
+    // var errorMap = Map.of(
+    // "error", ex.getMessage()
+    // );
+    // return ResponseApiEntity.badRequest(errorMap,
+    // externalService.getMessageSource().getMessage("Error.BadRequest.Default"));
+    // }
 
     /**
      * Handles all uncaught exceptions.
@@ -120,6 +139,6 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(Exception.class)
     public ResponseEntity<ApiResponse<?>> handleGlobalException(Exception ex, WebRequest request) {
         log.error(ex.getMessage(), ex);
-        return ResponseEntityUtils.internalServerError(ex, externalService.getMessageSourceService().getMessage("Error.InternalServerError.Default"));
+        return ResponseEntityUtils.internalServerError(ex, messageSourceService.getMessage("Error.InternalServerError.Default"));
     }
 }

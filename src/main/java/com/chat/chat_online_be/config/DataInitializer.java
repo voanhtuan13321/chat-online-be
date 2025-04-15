@@ -2,12 +2,14 @@ package com.chat.chat_online_be.config;
 
 import com.chat.chat_online_be.entity.AuthorityEntity;
 import com.chat.chat_online_be.entity.UserEntity;
-import com.chat.chat_online_be.repository.RepositoryContainer;
-import com.chat.chat_online_be.service.external.ExternalServiceContainer;
+import com.chat.chat_online_be.repository.IAuthorityRepository;
+import com.chat.chat_online_be.repository.IUserRepository;
+import com.chat.chat_online_be.service.internal.IAuthenticationService;
 import jakarta.annotation.PostConstruct;
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Component;
 
 import java.util.ArrayList;
@@ -24,8 +26,9 @@ import java.util.List;
 @SuppressWarnings("unused")
 public class DataInitializer {
 
-    ExternalServiceContainer externalServiceContainer;
-    RepositoryContainer repositoryContainer;
+    PasswordEncoder passwordEncoder;
+    IAuthorityRepository authorityRepository;
+    IUserRepository userRepository;
 
     /**
      * Constructor to initialize {@link DataInitializer} with dependencies.
@@ -33,7 +36,7 @@ public class DataInitializer {
     @PostConstruct
     public void init() {
         // Set data default to m_authority
-        var adminAuthor = initAuthority();
+        List<AuthorityEntity> adminAuthor = initAuthority();
 
         if (!adminAuthor.isEmpty()) {
             initAdmin(adminAuthor);
@@ -45,21 +48,21 @@ public class DataInitializer {
      */
     private List<AuthorityEntity> initAuthority() {
         // Create AuthorityEntity instances for admin and user roles
-        var admin = AuthorityEntity.builder().name("ADMIN").build();
-        var user = AuthorityEntity.builder().name("USER").build();
+        AuthorityEntity admin = AuthorityEntity.builder().name("ADMIN").build();
+        AuthorityEntity user = AuthorityEntity.builder().name("USER").build();
 
         // Save AuthorityEntity instances
-        var authors = new ArrayList<AuthorityEntity>();
+        List<AuthorityEntity> authors = new ArrayList<>();
 
         // Save default authority to database if not exist
         synchronized (this) {
-            if (!repositoryContainer.getAuthorityRepository().existsByName(admin.getName())) {
-                var adminAuthor = repositoryContainer.getAuthorityRepository().save(admin);
+            if (!authorityRepository.existsByName(admin.getName())) {
+                AuthorityEntity adminAuthor = authorityRepository.save(admin);
                 authors.add(adminAuthor);
             }
 
-            if (!repositoryContainer.getAuthorityRepository().existsByName(user.getName())) {
-                var userAuthor = repositoryContainer.getAuthorityRepository().save(user);
+            if (!authorityRepository.existsByName(user.getName())) {
+                AuthorityEntity userAuthor = authorityRepository.save(user);
                 authors.add(userAuthor);
             }
         }
@@ -73,10 +76,10 @@ public class DataInitializer {
      */
     private void initAdmin(List<AuthorityEntity> authors) {
         // Create admin user instance
-        var admin = UserEntity.builder()
+        UserEntity admin = UserEntity.builder()
                 .username("admin")
                 .email("admin@gmail.com")
-                .password(externalServiceContainer.getPasswordEncoder().encode("123456"))
+                .password(passwordEncoder.encode("123456"))
                 .authorities(authors)
                 .isOnline(true)
                 .build();
@@ -87,8 +90,8 @@ public class DataInitializer {
 
         // Save admin user to database if not exist
         synchronized (this) {
-            if (!repositoryContainer.getUserRepository().existsByEmail(admin.getEmail())) {
-                repositoryContainer.getUserRepository().save(admin);
+            if (!userRepository.existsByEmail(admin.getEmail())) {
+                userRepository.save(admin);
             }
         }
     }
